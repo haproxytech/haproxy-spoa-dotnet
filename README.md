@@ -17,13 +17,13 @@ For more information, read the blog post [Extending HAProxy with the Stream Proc
 Add a reference to the NuGet package using the .NET CLI:
 
 ```
-dotnet add package HAProxy.StreamProcessingOffload.Agent --version 1.0.0 
+$ dotnet add package HAProxy.StreamProcessingOffload.Agent --version 1.0.0 
 ```
 
 Or use the NuGet Package Manager:
 
 ```
-Install-Package HAProxy.StreamProcessingOffload.Agent -Version 1.0.0 
+PS> Install-Package HAProxy.StreamProcessingOffload.Agent -Version 1.0.0 
 ```
 
 ## Usage
@@ -32,11 +32,11 @@ Install-Package HAProxy.StreamProcessingOffload.Agent -Version 1.0.0
 2. Create a new folder and `cd` into it.
 3. Create a new .NET Core project:
 ```
-dotnet new console
+$ dotnet new console
 ```
 4. Add a reference to the package:
 ```
-dotnet add package HAProxy.StreamProcessingOffload.Agent --version 1.0.0
+$ dotnet add package HAProxy.StreamProcessingOffload.Agent --version 1.0.0
 ```
 5. Edit **Program.cs** to start a service listening on an IP and port. Create an instance of `FrameProcessor` and call `HandleStream` to process SPOP messages received on new network connections. This method accepts a `NetworkStream` and a callback function that takes a `NotifyFrame` and returns `List<SpoeAction>`.
 
@@ -154,7 +154,7 @@ Both actions and arguments received in messages from HAProxy are represented as 
 
 For message arguments, the type is set for you by HAProxy depending on the fetch method used. For example, the `src` fetch method is `Ipv4` or `Ipv6`.
 
-There can be multiple *messages* within a NOTIFY frame, so you should check for a message name to find the right one:
+There can be multiple messages within a NOTIFY frame, so you should check for a message name to find the right one:
 
 ```C#
 var messages = ((ListOfMessagesPayload)notifyFrame.Payload).Messages;
@@ -182,7 +182,7 @@ spoe-message my-message-name
    event on-frontend-http-request if { path / }
 ```
 
-In your **haproxy.cfg*, the SPOE can be initialized by adding a `filter spoe` line:
+In your **haproxy.cfg**, the SPOE can be initialized by adding a `filter spoe` line:
 
 ```
 frontend web
@@ -206,8 +206,8 @@ backend be_agents
 
 To build and run the unit tests, use the following commands
 
-```bash
-dotnet clean
-dotnet build
-dotnet test
+```shell
+$ dotnet clean
+$ dotnet build
+$ dotnet test
 ```
