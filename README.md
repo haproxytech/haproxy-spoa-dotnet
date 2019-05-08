@@ -44,7 +44,7 @@ dotnet add package HAProxy.StreamProcessingOffload.Agent --version 1.0.0
 
 **Program.cs**:
 
-```
+```C#
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -131,7 +131,7 @@ Actions:
 
 When setting a variable, you must pass in the variable scope (`Process`, `Session`, `Transaction`, `Request`, or `Response`). Then, set a name for the variable and its value as a `TypedData` instance.
 
-```
+```C#
 SpoeAction setVar = 
    new SetVariableAction(
        VariableScope.Session, // scope
@@ -156,7 +156,7 @@ For message arguments, the type is set for you by HAProxy depending on the fetch
 
 There can be multiple *messages* within a NOTIFY frame, so you should check for a message name to find the right one:
 
-```
+```C#
 var messages = ((ListOfMessagesPayload)notifyFrame.Payload).Messages;
 if (messages.Any(msg => msg.Name == "my-message-name"))
 {
@@ -206,7 +206,7 @@ backend be_agents
 
 To build and run the unit tests, use the following commands
 
-```
+```bash
 dotnet clean
 dotnet build
 dotnet test
