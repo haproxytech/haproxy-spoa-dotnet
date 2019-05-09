@@ -83,6 +83,20 @@ namespace HAProxy.StreamProcessingOffload.Agent.Tests
             Assert.AreEqual("11000000001111110000111101100000", ToBitString(bytes));
         }
 
+        [TestCase(true, "true")]
+        [TestCase(false, "false")]
+        public void ToString_WhenValueIsBoolean_ReturnsStringValue(bool value, string expectedResult)
+        {
+            // arrange
+            TypedData data = new TypedData(DataType.Boolean, value);
+
+            // act
+            string result = data.ToString();
+
+            // assert
+            Assert.AreEqual(expectedResult, result);
+        }
+
         private static string ToBitString(byte[] buffer)
         {
             var bits = new System.Collections.BitArray(buffer);

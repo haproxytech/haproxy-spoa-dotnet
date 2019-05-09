@@ -100,6 +100,8 @@ namespace HAProxy.StreamProcessingOffload.Agent
             {
                 case DataType.Binary:
                     return (string)this.Value;
+                case DataType.Boolean:
+                    return (bool)this.Value ? "true" : "false";
                 case DataType.Int32:
                     return ((int)this.Value).ToString();
                 case DataType.Int64:
