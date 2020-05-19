@@ -75,5 +75,24 @@ namespace HAProxy.StreamProcessingOffload.Agent.Tests
             string result2 = Encoding.ASCII.GetString(resultBytes2);
             Assert.AreEqual("b", result2);
         }
+
+        [Test]
+        public void Discard_WhenCalled_DeletesKeyAndData()
+        {
+            // arrange
+            var catalogue = new FragmentCatalogue();
+            byte[] b1 = Encoding.ASCII.GetBytes("a");
+            byte[] b2 = Encoding.ASCII.GetBytes("b");
+
+            // act
+            catalogue.Push(1, 1, b1);
+            catalogue.Discard(1, 1); // discard a
+            catalogue.Push(1, 1, b2);
+
+            // assert
+            byte[] resultBytes2 = catalogue.Pop(1, 1); // b
+            string result2 = Encoding.ASCII.GetString(resultBytes2);
+            Assert.AreEqual("b", result2);
+        }
     }
 }
