@@ -55,6 +55,14 @@ namespace HAProxy.StreamProcessingOffload.Agent
             }
         }
 
+        public void Discard(long streamId, long frameId)
+        {
+            lock (this.lockObj)
+            {
+                DeleteKeyAndData(streamId, frameId);
+            }
+        }
+
         private void DeleteKeyAndData(long streamId, long frameId)
         {
             string key = CombineStreamIdAndFrameId(streamId, frameId);

@@ -25,7 +25,7 @@ namespace HAProxy.StreamProcessingOffload.Agent
         /// </summary>
         public FrameProcessor()
         {
-            this.LogFunc = (s) => {};
+            this.LogFunc = (s) => { };
             this.MaxFrameSize = 16380;
             this.agentCapabilities = new string[] { "fragmentation" };
         }
@@ -89,7 +89,8 @@ namespace HAProxy.StreamProcessingOffload.Agent
                             {
                                 closeConnection = true;
                             }
-                            else{
+                            else
+                            {
                                 string haproxyCapabilitiesString =
                                     (string)((KeyValueListPayload)frame.Payload).KeyValueItems.First(item => item.Key == "capabilities").Value.Value;
                                 haproxyCapabilities = haproxyCapabilitiesString.Split(',');
@@ -134,47 +135,55 @@ namespace HAProxy.StreamProcessingOffload.Agent
                             }
                             break;
                         case FrameType.Unset:
-                            // The Unset frame continues the data, but we only need
-                            // to append its payload, not its metadata
-                            fragments.Push(
-                                frame.Metadata.StreamId.Value,
-                                frame.Metadata.FrameId.Value,
-                                frame.Payload.Bytes);
-
-                            if (frame.Metadata.Flags.Fin)
+                            if (frame.Metadata.Flags.Abort)
                             {
-                                byte[] data = fragments.Pop(frame.Metadata.StreamId.Value, frame.Metadata.FrameId.Value);
-                                Frame newNotifyFrame = ParseFrame(data);
-                                newNotifyFrame.Metadata.Flags.Fin = true;
-
-                                if (this.EnableLogging)
-                                {
-                                    this.LogFunc(newNotifyFrame.ToString());
-                                }
-
-                                var actions = notifyHandler((NotifyFrame)newNotifyFrame);
-
-                                var ackFrame = new AckFrame(
+                                fragments.Discard(frame.Metadata.StreamId.Value, frame.Metadata.FrameId.Value);
+                                sendAgentDisconnect = true;
+                            }
+                            else
+                            {
+                                // The Unset frame continues the data, but we only need
+                                // to append its payload, not its metadata
+                                fragments.Push(
                                     frame.Metadata.StreamId.Value,
                                     frame.Metadata.FrameId.Value,
-                                    actions ?? new List<SpoeAction>());
+                                    frame.Payload.Bytes);
 
-                                // fragment if necessary
-                                if (haproxyCapabilities.Contains("fragmentation"))
+                                if (frame.Metadata.Flags.Fin)
                                 {
-                                    var fragmentedFrames = ((AckFrame)ackFrame).FragmentFrame(this.MaxFrameSize);
+                                    byte[] data = fragments.Pop(frame.Metadata.StreamId.Value, frame.Metadata.FrameId.Value);
+                                    Frame newNotifyFrame = ParseFrame(data);
+                                    newNotifyFrame.Metadata.Flags.Fin = true;
 
-                                    foreach (var f in fragmentedFrames)
+                                    if (this.EnableLogging)
                                     {
-                                        responseFrames.Enqueue(f);
+                                        this.LogFunc(newNotifyFrame.ToString());
                                     }
-                                }
-                                else
-                                {
-                                    responseFrames.Enqueue(ackFrame);
-                                }
 
-                                sendAgentDisconnect = true;
+                                    var actions = notifyHandler((NotifyFrame)newNotifyFrame);
+
+                                    var ackFrame = new AckFrame(
+                                        frame.Metadata.StreamId.Value,
+                                        frame.Metadata.FrameId.Value,
+                                        actions ?? new List<SpoeAction>());
+
+                                    // fragment if necessary
+                                    if (haproxyCapabilities.Contains("fragmentation"))
+                                    {
+                                        var fragmentedFrames = ((AckFrame)ackFrame).FragmentFrame(this.MaxFrameSize);
+
+                                        foreach (var f in fragmentedFrames)
+                                        {
+                                            responseFrames.Enqueue(f);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        responseFrames.Enqueue(ackFrame);
+                                    }
+
+                                    sendAgentDisconnect = true;
+                                }
                             }
                             break;
                     }
@@ -307,7 +316,7 @@ namespace HAProxy.StreamProcessingOffload.Agent
         {
             Frame frame;
 
-            switch(frameType)
+            switch (frameType)
             {
                 case FrameType.HaproxyDisconnect:
                     frame = new HaproxyDisconnectFrame();
