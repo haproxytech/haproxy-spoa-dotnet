@@ -21,7 +21,7 @@ namespace HAProxy.StreamProcessingOffload.Agent
         /// <summary>
         /// A value indicating whether the processing of the current frame
         /// must be cancelled. This should be set on frames with a fragmented
-        /// payload.null It can be ignored for frames with an unfragmented payload.
+        /// payload. It can be ignored for frames with an unfragmented payload.
         /// When it is set, Fin must also be set.
         /// </summary>
         public bool Abort;
