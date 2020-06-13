@@ -1,8 +1,8 @@
 FROM mcr.microsoft.com/dotnet/core/sdk:2.2 AS build
 WORKDIR /source
 COPY HAProxy.StreamProcessingOffload.Agent/ ./HAProxy.StreamProcessingOffload.Agent/
-COPY IntegrationTests/agent/ ./IntegrationTests/agent/
-WORKDIR /source/IntegrationTests/agent
+COPY examples/agent/ ./examples/agent/
+WORKDIR /source/examples/agent
 RUN dotnet restore
 RUN dotnet publish --configuration Debug -o /output
 

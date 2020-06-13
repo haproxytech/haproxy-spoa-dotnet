@@ -1,4 +1,4 @@
-# Integration Tests
+# Examples
 
 Build an run the Docker Compose file:
 

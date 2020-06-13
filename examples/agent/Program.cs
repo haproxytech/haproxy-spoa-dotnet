@@ -30,6 +30,8 @@ namespace Agent
             {
                 TcpClient client = listener.AcceptTcpClient();
 
+                Console.WriteLine("Accepted new TCP connection.");
+
                 Task.Run(() =>
                 {
                     NetworkStream stream = client.GetStream();

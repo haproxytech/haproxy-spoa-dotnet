@@ -10,6 +10,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using HAProxy.StreamProcessingOffload.Agent.Frames;
 using HAProxy.StreamProcessingOffload.Agent.Payloads;
 
@@ -28,6 +29,15 @@ namespace HAProxy.StreamProcessingOffload.Agent
             this.LogFunc = (s) => { };
             this.MaxFrameSize = 16380;
             this.agentCapabilities = new string[] { "fragmentation" };
+            this.cancellationTokenSource = new CancellationTokenSource();
+            this.cancellationToken = this.cancellationTokenSource.Token;
+            AppDomain.CurrentDomain.ProcessExit += (object sender, EventArgs e) => {
+                if (this.EnableLogging)
+                {
+                    this.LogFunc("Process exiting, cancelling FrameProcessor task.");
+                }
+                this.Cancel();
+            };
         }
 
         /// <summary>
@@ -45,6 +55,10 @@ namespace HAProxy.StreamProcessingOffload.Agent
         /// Gets or sets a logging function that takes a string.
         /// </summary>
         public Action<string> LogFunc { get; set; }
+
+        private CancellationTokenSource cancellationTokenSource;
+
+        private CancellationToken cancellationToken;
 
         /// <summary>
         /// Handles receiving and sending frames on the given stream.
@@ -68,6 +82,8 @@ namespace HAProxy.StreamProcessingOffload.Agent
 
             while (true)
             {
+                this.cancellationToken.ThrowIfCancellationRequested();
+                
                 bool sendAgentDisconnect = false;
                 bool closeConnection = false;
                 Frame frame = null;
@@ -123,8 +139,6 @@ namespace HAProxy.StreamProcessingOffload.Agent
                                 {
                                     responseFrames.Enqueue(ackFrame);
                                 }
-
-                                sendAgentDisconnect = true;
                             }
                             else
                             {
@@ -138,7 +152,6 @@ namespace HAProxy.StreamProcessingOffload.Agent
                             if (frame.Metadata.Flags.Abort)
                             {
                                 fragments.Discard(frame.Metadata.StreamId.Value, frame.Metadata.FrameId.Value);
-                                sendAgentDisconnect = true;
                             }
                             else
                             {
@@ -181,8 +194,6 @@ namespace HAProxy.StreamProcessingOffload.Agent
                                     {
                                         responseFrames.Enqueue(ackFrame);
                                     }
-
-                                    sendAgentDisconnect = true;
                                 }
                             }
                             break;
@@ -247,6 +258,10 @@ namespace HAProxy.StreamProcessingOffload.Agent
             }
         }
 
+        public void Cancel()
+        {
+            this.cancellationTokenSource.Cancel();
+        }
         private Frame HandleHandshake(Frame frame)
         {
             if (frame.Type != FrameType.HaproxyHello)
