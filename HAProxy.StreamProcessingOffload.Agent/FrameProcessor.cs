@@ -10,7 +10,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Threading;
+using System.Net.Sockets;
 using HAProxy.StreamProcessingOffload.Agent.Frames;
 using HAProxy.StreamProcessingOffload.Agent.Payloads;
 
@@ -28,16 +28,7 @@ namespace HAProxy.StreamProcessingOffload.Agent
         {
             this.LogFunc = (s) => { };
             this.MaxFrameSize = 16380;
-            this.agentCapabilities = new string[] { "fragmentation" };
-            this.cancellationTokenSource = new CancellationTokenSource();
-            this.cancellationToken = this.cancellationTokenSource.Token;
-            AppDomain.CurrentDomain.ProcessExit += (object sender, EventArgs e) => {
-                if (this.EnableLogging)
-                {
-                    this.LogFunc("Process exiting, cancelling FrameProcessor task.");
-                }
-                this.Cancel();
-            };
+            this.agentCapabilities = new string[] { "fragmentation" };            
         }
 
         /// <summary>
@@ -56,16 +47,12 @@ namespace HAProxy.StreamProcessingOffload.Agent
         /// </summary>
         public Action<string> LogFunc { get; set; }
 
-        private CancellationTokenSource cancellationTokenSource;
-
-        private CancellationToken cancellationToken;
-
         /// <summary>
         /// Handles receiving and sending frames on the given stream.
         /// </summary>
         /// <param name="stream">The stream to receive and send frames on</param>
         /// <param name="notifyHandler">Function to invoke when a NOTIFY frame is received</param>
-        public void HandleStream(Stream stream, Func<NotifyFrame, IList<SpoeAction>> notifyHandler)
+        public void HandleStream(NetworkStream stream, Func<NotifyFrame, IList<SpoeAction>> notifyHandler)
         {
             if (stream == null)
             {
@@ -82,9 +69,9 @@ namespace HAProxy.StreamProcessingOffload.Agent
 
             while (true)
             {
-                this.cancellationToken.ThrowIfCancellationRequested();
-                
                 bool sendAgentDisconnect = false;
+                string disconnectReason = string.Empty;
+                Status disconnectStatus = Status.Normal;
                 bool closeConnection = false;
                 Frame frame = null;
                 var responseFrames = new ConcurrentQueue<Frame>();
@@ -114,6 +101,8 @@ namespace HAProxy.StreamProcessingOffload.Agent
                             break;
                         case FrameType.HaproxyDisconnect:
                             sendAgentDisconnect = true;
+                            disconnectStatus = Status.Normal;
+                            disconnectReason = "HAProxy disconnected";
                             break;
                         case FrameType.Notify:
                             if (frame.Metadata.Flags.Fin)
@@ -203,6 +192,8 @@ namespace HAProxy.StreamProcessingOffload.Agent
                 {
                     this.LogFunc(ex.ToString());
                     sendAgentDisconnect = true;
+                    disconnectStatus = Status.UnknownError;
+                    disconnectReason = ex.Message;
                     closeConnection = true;
                 }
 
@@ -234,7 +225,7 @@ namespace HAProxy.StreamProcessingOffload.Agent
 
                 if (sendAgentDisconnect)
                 {
-                    Frame disconnectFrame = Disconnect();
+                    Frame disconnectFrame = Disconnect(disconnectStatus, disconnectReason);
 
                     if (this.EnableLogging)
                     {
@@ -258,10 +249,38 @@ namespace HAProxy.StreamProcessingOffload.Agent
             }
         }
 
-        public void Cancel()
+        public void CancelStream(NetworkStream stream)
         {
-            this.cancellationTokenSource.Cancel();
+            try{
+                if (this.EnableLogging)
+                {
+                    this.LogFunc("Cancellation has been requested");
+                }
+                
+                Frame disconnectFrame = Disconnect(Status.Normal, "Stream was cancelled");
+                stream.Write(disconnectFrame.Bytes, 0, disconnectFrame.Bytes.Length);
+
+                if (this.EnableLogging)
+                {
+                    this.LogFunc(disconnectFrame.ToString());
+                }
+
+                if (this.EnableLogging)
+                {
+                    this.LogFunc("Cancel - Closing connection");
+                }
+
+                stream.Close();
+            }
+            catch (ObjectDisposedException)
+            {
+                if (this.EnableLogging)
+                {
+                    this.LogFunc("Cancel - Connection already closed, moving on");
+                }
+            }
         }
+
         private Frame HandleHandshake(Frame frame)
         {
             if (frame.Type != FrameType.HaproxyHello)

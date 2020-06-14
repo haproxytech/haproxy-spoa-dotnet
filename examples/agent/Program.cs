@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Threading;
 using System.Threading.Tasks;
 using HAProxy.StreamProcessingOffload.Agent;
 using HAProxy.StreamProcessingOffload.Agent.Actions;
@@ -30,11 +31,16 @@ namespace Agent
             {
                 TcpClient client = listener.AcceptTcpClient();
 
-                Console.WriteLine("Accepted new TCP connection.");
-
                 Task.Run(() =>
                 {
                     NetworkStream stream = client.GetStream();
+
+                    // Cancel stream when process terminates
+                    System.AppDomain.CurrentDomain.ProcessExit += (sender, e) =>
+                    {
+                        frameProcessor.CancelStream(stream);
+                    };
+
                     frameProcessor.HandleStream(stream, (notifyFrame) =>
                     {
                         // NOTIFY frames contain HAProxy messages to the agent.
@@ -44,26 +50,26 @@ namespace Agent
 
                         if (messages.Any(msg => msg.Name == "my-message-name"))
                         {
-                           var myMessage = messages.First(msg => msg.Name == "my-message-name");
+                            var myMessage = messages.First(msg => msg.Name == "my-message-name");
 
-                           // Each message may contain a collection of arguments, which hold the data.
-                           TypedData myArg = myMessage.Args.First(arg => arg.Key == "ip").Value; 
+                            // Each message may contain a collection of arguments, which hold the data.
+                            TypedData myArg = myMessage.Args.First(arg => arg.Key == "ip").Value; 
 
-                           int ip_score = 10;
+                            int ip_score = 10;
 
-                           if ((string)myArg.Value == "192.168.50.1")
-                           {
-                               ip_score = 20;
-                           }
+                            if ((string)myArg.Value == "192.168.50.1")
+                            {
+                                ip_score = 20;
+                            }
 
-                           // You can send actions back to HAProxy, such as setting a variable.
-                           SpoeAction setVar = 
-                              new SetVariableAction(
-                                 VariableScope.Session, 
-                                 "ip_score", 
-                                 new TypedData(DataType.Int32, ip_score));
+                            // You can send actions back to HAProxy, such as setting a variable.
+                            SpoeAction setVar = 
+                                new SetVariableAction(
+                                    VariableScope.Session, 
+                                    "ip_score", 
+                                    new TypedData(DataType.Int32, ip_score));
 
-                           responseActions.Add(setVar);
+                            responseActions.Add(setVar);
                         }
 
                         return responseActions;
