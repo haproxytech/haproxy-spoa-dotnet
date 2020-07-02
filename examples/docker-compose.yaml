@@ -13,7 +13,7 @@ services:
       container_name: agent
 
     haproxy:
-      image: haproxytech/haproxy-alpine:2.1
+      image: haproxytech/haproxy-alpine:2.2-dev11
       ports:
       - "8000:80"
       container_name: haproxy
