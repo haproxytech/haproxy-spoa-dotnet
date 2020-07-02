@@ -69,6 +69,8 @@ namespace HAProxy.StreamProcessingOffload.Agent
             while (true)
             {
                 bool sendAgentDisconnect = false;
+                string disconnectReason = string.Empty;
+                Status disconnectStatus = Status.Normal;
                 bool closeConnection = false;
                 Frame frame = null;
                 var responseFrames = new ConcurrentQueue<Frame>();
@@ -98,6 +100,8 @@ namespace HAProxy.StreamProcessingOffload.Agent
                             break;
                         case FrameType.HaproxyDisconnect:
                             sendAgentDisconnect = true;
+                            disconnectStatus = Status.Normal;
+                            disconnectReason = "HAProxy disconnected";
                             break;
                         case FrameType.Notify:
                             if (frame.Metadata.Flags.Fin)
@@ -123,8 +127,6 @@ namespace HAProxy.StreamProcessingOffload.Agent
                                 {
                                     responseFrames.Enqueue(ackFrame);
                                 }
-
-                                sendAgentDisconnect = true;
                             }
                             else
                             {
@@ -138,7 +140,6 @@ namespace HAProxy.StreamProcessingOffload.Agent
                             if (frame.Metadata.Flags.Abort)
                             {
                                 fragments.Discard(frame.Metadata.StreamId.Value, frame.Metadata.FrameId.Value);
-                                sendAgentDisconnect = true;
                             }
                             else
                             {
@@ -181,8 +182,6 @@ namespace HAProxy.StreamProcessingOffload.Agent
                                     {
                                         responseFrames.Enqueue(ackFrame);
                                     }
-
-                                    sendAgentDisconnect = true;
                                 }
                             }
                             break;
@@ -192,6 +191,8 @@ namespace HAProxy.StreamProcessingOffload.Agent
                 {
                     this.LogFunc(ex.ToString());
                     sendAgentDisconnect = true;
+                    disconnectStatus = Status.UnknownError;
+                    disconnectReason = ex.Message;
                     closeConnection = true;
                 }
 
@@ -223,7 +224,7 @@ namespace HAProxy.StreamProcessingOffload.Agent
 
                 if (sendAgentDisconnect)
                 {
-                    Frame disconnectFrame = Disconnect();
+                    Frame disconnectFrame = Disconnect(disconnectStatus, disconnectReason);
 
                     if (this.EnableLogging)
                     {
@@ -243,6 +244,38 @@ namespace HAProxy.StreamProcessingOffload.Agent
 
                     stream.Close();
                     break;
+                }
+            }
+        }
+
+        public void CancelStream(Stream stream)
+        {
+            try{
+                if (this.EnableLogging)
+                {
+                    this.LogFunc("Cancellation has been requested");
+                }
+                
+                Frame disconnectFrame = Disconnect(Status.Normal, "Stream was cancelled");
+                stream.Write(disconnectFrame.Bytes, 0, disconnectFrame.Bytes.Length);
+
+                if (this.EnableLogging)
+                {
+                    this.LogFunc(disconnectFrame.ToString());
+                }
+
+                if (this.EnableLogging)
+                {
+                    this.LogFunc("Cancel - Closing connection");
+                }
+
+                stream.Close();
+            }
+            catch (ObjectDisposedException)
+            {
+                if (this.EnableLogging)
+                {
+                    this.LogFunc("Cancel - Connection already closed, moving on");
                 }
             }
         }

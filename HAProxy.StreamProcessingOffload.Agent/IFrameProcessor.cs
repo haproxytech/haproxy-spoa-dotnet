@@ -36,5 +36,11 @@ namespace HAProxy.StreamProcessingOffload.Agent
         /// <param name="stream">The stream to receive and send frames on</param>
         /// <param name="notifyHandler">Function to invoke when a NOTIFY frame is received</param>
         void HandleStream(Stream stream, Func<NotifyFrame, IList<SpoeAction>> notifyHandler);
+
+        /// <summary>
+        /// Cancels processing on the given stream.
+        /// </summary>
+        /// <param name="stream">The stream to cancel</param>
+        void CancelStream(Stream stream);
     }
 }
