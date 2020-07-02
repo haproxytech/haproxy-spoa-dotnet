@@ -19,3 +19,6 @@ services:
       container_name: haproxy
       volumes:
       - "./haproxy/:/etc/haproxy"
+      depends_on:
+        - web
+        - agent
