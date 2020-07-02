@@ -17,13 +17,13 @@ For more information, read the blog post [Extending HAProxy with the Stream Proc
 Add a reference to the NuGet package using the .NET CLI:
 
 ```
-$ dotnet add package HAProxy.StreamProcessingOffload.Agent --version 1.0.0 
+$ dotnet add package HAProxy.StreamProcessingOffload.Agent --version 1.0.2 
 ```
 
 Or use the NuGet Package Manager:
 
 ```
-PS> Install-Package HAProxy.StreamProcessingOffload.Agent -Version 1.0.0 
+PS> Install-Package HAProxy.StreamProcessingOffload.Agent -Version 1.0.2 
 ```
 
 ## Usage
@@ -36,7 +36,7 @@ $ dotnet new console
 ```
 4. Add a reference to the package:
 ```
-$ dotnet add package HAProxy.StreamProcessingOffload.Agent --version 1.0.0
+$ dotnet add package HAProxy.StreamProcessingOffload.Agent --version 1.0.2
 ```
 5. Edit **Program.cs** to start a service listening on an IP and port. Create an instance of `FrameProcessor` and call `HandleStream` to process SPOP messages received on new network connections. This method accepts a `NetworkStream` and a callback function that takes a `NotifyFrame` and returns `List<SpoeAction>`.
 
