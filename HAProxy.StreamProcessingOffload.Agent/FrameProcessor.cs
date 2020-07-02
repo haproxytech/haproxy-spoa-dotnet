@@ -10,7 +10,6 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Net.Sockets;
 using HAProxy.StreamProcessingOffload.Agent.Frames;
 using HAProxy.StreamProcessingOffload.Agent.Payloads;
 
@@ -28,7 +27,7 @@ namespace HAProxy.StreamProcessingOffload.Agent
         {
             this.LogFunc = (s) => { };
             this.MaxFrameSize = 16380;
-            this.agentCapabilities = new string[] { "fragmentation" };            
+            this.agentCapabilities = new string[] { "fragmentation" };
         }
 
         /// <summary>
@@ -52,7 +51,7 @@ namespace HAProxy.StreamProcessingOffload.Agent
         /// </summary>
         /// <param name="stream">The stream to receive and send frames on</param>
         /// <param name="notifyHandler">Function to invoke when a NOTIFY frame is received</param>
-        public void HandleStream(NetworkStream stream, Func<NotifyFrame, IList<SpoeAction>> notifyHandler)
+        public void HandleStream(Stream stream, Func<NotifyFrame, IList<SpoeAction>> notifyHandler)
         {
             if (stream == null)
             {
@@ -249,7 +248,7 @@ namespace HAProxy.StreamProcessingOffload.Agent
             }
         }
 
-        public void CancelStream(NetworkStream stream)
+        public void CancelStream(Stream stream)
         {
             try{
                 if (this.EnableLogging)
