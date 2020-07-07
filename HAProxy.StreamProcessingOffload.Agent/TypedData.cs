@@ -8,7 +8,6 @@
 using System;
 using System.Collections.Generic;
 using System.Net;
-using System.Net.Sockets;
 
 namespace HAProxy.StreamProcessingOffload.Agent
 {
@@ -99,7 +98,7 @@ namespace HAProxy.StreamProcessingOffload.Agent
             switch (this.Type)
             {
                 case DataType.Binary:
-                    return (string)this.Value;
+                    return Convert.ToBase64String((byte[])this.Value);
                 case DataType.Boolean:
                     return (bool)this.Value ? "true" : "false";
                 case DataType.Int32:
@@ -126,9 +125,9 @@ namespace HAProxy.StreamProcessingOffload.Agent
         private byte[] GetBytesForBinaryValue()
         {
             var bytes = new List<byte>();
-            VariableInt lengthOfValue = VariableInt.EncodeVariableInt(((string)this.Value).Length);
+            VariableInt lengthOfValue = VariableInt.EncodeVariableInt(((byte[])this.Value).Length);
             bytes.AddRange(lengthOfValue.Bytes);
-            bytes.AddRange(Convert.FromBase64String((string)this.Value));
+            bytes.AddRange((byte[])this.Value);
             return bytes.ToArray();
         }
 

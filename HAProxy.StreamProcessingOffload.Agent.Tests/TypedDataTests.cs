@@ -1,10 +1,28 @@
 using NUnit.Framework;
+using System;
 
 namespace HAProxy.StreamProcessingOffload.Agent.Tests
 {
     [TestFixture]
     public class TypedDataTests
     {
+        [Test]
+        public void Bytes_WhenTypeIsBinary_ReturnsExpectedResult()
+        {
+            // arrange
+            byte[] value = Convert.FromBase64String("Zm9vPWJhcg=="); // base64: foo=bar
+            TypedData data = new TypedData(DataType.Binary, value);
+
+            // act
+            byte[] bytes = data.Bytes;
+            
+            // assert
+            // type 9 = 10010000
+            // length 7 = 11100000
+            // foo=bar: 01100110111101101111011010111100010001101000011001001110
+            Assert.AreEqual("100100001110000001100110111101101111011010111100010001101000011001001110", ToBitString(bytes));
+        }
+        
         [Test]
         public void Bytes_WhenTypeIsString_ReturnsExpectedResult()
         {

@@ -57,7 +57,7 @@ namespace HAProxy.StreamProcessingOffload.Agent.Payloads
 
                 foreach (var arg in message.Args)
                 {
-                    sb.AppendLine(string.Format("(arg) {0} = {1}", arg.Key, arg.Value.Value));
+                    sb.AppendLine(string.Format("(arg) {0} = {1}", arg.Key, arg.Value.ToString()));
                 }
             }
 

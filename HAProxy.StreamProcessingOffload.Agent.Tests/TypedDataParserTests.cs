@@ -9,6 +9,36 @@ namespace HAProxy.StreamProcessingOffload.Agent.Tests
     public class TypedDataParserTests
     {
         [Test]
+        public void ParseNext_WhenBufferContainsBinary_ReturnsExpectedTypedDataTypeAndValue()
+        {
+            // arrange
+            int offset = 0;
+
+            // act
+            // 10010000 11100000 01100110 11110110 11110110 10111100 01000110 10000110 01001110
+            BitArray ba = new BitArray(
+                new bool[]{ 
+                    true, false, false, true,  false, false, false, false,
+                    true, true,  true,  false, false, false, false, false,
+                    false, true, true,  false, false, true,  true,  false,
+                    true, true,  true,  true,  false, true,  true,  false,
+                    true, true,  true,  true,  false, true,  true,  false,
+                    true, false, true,  true,  true,  true,  false, false,
+                    false, true, false, false, false, true,  true,  false,
+                    true,  false,false, false, false, true,  true,  false,
+                    false, true, false, false, true,  true,  true,  false
+                });
+            byte[] buffer = new byte[9];
+            ba.CopyTo(buffer, 0);
+
+            TypedData result = TypedDataParser.ParseNext(buffer, ref offset);
+
+            // assert
+            Assert.AreEqual(DataType.Binary, result.Type);
+            Assert.AreEqual("Zm9vPWJhcg==", result.ToString()); // base64 foo=bar
+        }
+        
+        [Test]
         public void ParseNext_WhenBufferContainsBoolean_ReturnsExpectedTypedDataTypeAndValue()
         {
             // arrange

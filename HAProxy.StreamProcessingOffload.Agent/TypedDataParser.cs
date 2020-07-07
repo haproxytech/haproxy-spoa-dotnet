@@ -68,7 +68,7 @@ namespace HAProxy.StreamProcessingOffload.Agent
                 length = remainingBufferSize;
             }
 
-            string value = Convert.ToBase64String(buffer.Skip(lengthOfBinary.Length).Take((int)lengthOfBinary.Value).ToArray());
+            byte[] value = buffer.Skip(lengthOfBinary.Length).Take((int)lengthOfBinary.Value).ToArray();
             offset = offset + lengthOfLength +  length;
             return new TypedData(DataType.Binary, value);
         }
