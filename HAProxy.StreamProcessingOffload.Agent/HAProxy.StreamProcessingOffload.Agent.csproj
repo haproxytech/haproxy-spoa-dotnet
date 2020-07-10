@@ -3,11 +3,11 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <PackageId>HAProxy.StreamProcessingOffload.Agent</PackageId>
-    <Version>1.0.2</Version>
+    <Version>1.0.3</Version>
     <Authors>Nick Ramirez</Authors>
     <Company>HAProxy Technologies</Company>
     <Description>The HAProxy Stream Processing Offload Protocol (SPOP) enables you to extend HAProxy by streaming load balancer data to an external program. This is a .NET library for creating a SPOP agent.</Description>
-    <Copyright>Copyright (c) 2019. HAProxy Technologies LLC</Copyright>
+    <Copyright>Copyright (c) 2020. HAProxy Technologies LLC</Copyright>
     <PackageLicenseExpression>GPL-2.0-or-later</PackageLicenseExpression>
     <PackageIconUrl>https://cdn.haproxy.com/wp-content/uploads/2017/06/Favicon-3.png</PackageIconUrl>
     <IncludeSymbols>True</IncludeSymbols>
