@@ -80,6 +80,14 @@ namespace HAProxy.StreamProcessingOffload.Agent
                     byte[] frameBytes = GetBytesForNextFrame(stream);
                     frame = ParseFrame(frameBytes);
 
+                    if (this.EnableLogging)
+                    {
+                        if (frame != null)
+                        {
+                            this.LogFunc(frame.ToString());
+                        }
+                    }
+
                     switch (frame.Type)
                     {
                         case FrameType.HaproxyHello:
@@ -198,11 +206,6 @@ namespace HAProxy.StreamProcessingOffload.Agent
 
                 if (this.EnableLogging)
                 {
-                    if (frame != null)
-                    {
-                        this.LogFunc(frame.ToString());
-                    }
-
                     if (responseFrames.Any())
                     {
                         foreach (var rf in responseFrames)
