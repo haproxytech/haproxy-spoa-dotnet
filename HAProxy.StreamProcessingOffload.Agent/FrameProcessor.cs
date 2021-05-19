@@ -53,9 +53,25 @@ namespace HAProxy.StreamProcessingOffload.Agent
         /// <param name="notifyHandler">Function to invoke when a NOTIFY frame is received</param>
         public void HandleStream(Stream stream, Func<NotifyFrame, IList<SpoeAction>> notifyHandler)
         {
-            if (stream == null)
+            this.HandleStream(stream, stream, notifyHandler);
+        }
+
+        /// <summary>
+        /// Handles receiving and sending frames on the given stream.
+        /// </summary>
+        /// <param name="inputStream">The stream to receive frames from</param>
+        /// <param name="outputStream">The stream to send frames on</param>
+        /// <param name="notifyHandler">Function to invoke when a NOTIFY frame is received</param>
+        public void HandleStream(Stream inputStream, Stream outputStream, Func<NotifyFrame, IList<SpoeAction>> notifyHandler)
+        {
+            if (inputStream == null)
             {
-                throw new ApplicationException("Start method requires 'stream' parameter.");
+                throw new ApplicationException("Start method requires 'inputStream' parameter.");
+            }
+
+            if (outputStream == null)
+            {
+                throw new ApplicationException("Start method requires 'outputStream' parameter.");
             }
 
             if (notifyHandler == null)
@@ -77,7 +93,7 @@ namespace HAProxy.StreamProcessingOffload.Agent
 
                 try
                 {
-                    byte[] frameBytes = GetBytesForNextFrame(stream);
+                    byte[] frameBytes = GetBytesForNextFrame(inputStream);
                     frame = ParseFrame(frameBytes);
 
                     if (this.EnableLogging)
@@ -221,7 +237,7 @@ namespace HAProxy.StreamProcessingOffload.Agent
 
                     while (responseFrames.TryDequeue(out dequeuedFrame))
                     {
-                        stream.Write(dequeuedFrame.Bytes, 0, dequeuedFrame.Bytes.Length);
+                        outputStream.Write(dequeuedFrame.Bytes, 0, dequeuedFrame.Bytes.Length);
                     }
                 }
 
@@ -234,7 +250,7 @@ namespace HAProxy.StreamProcessingOffload.Agent
                         this.LogFunc(disconnectFrame.ToString());
                     }
 
-                    stream.Write(disconnectFrame.Bytes, 0, disconnectFrame.Bytes.Length);
+                    outputStream.Write(disconnectFrame.Bytes, 0, disconnectFrame.Bytes.Length);
                     closeConnection = true;
                 }
 
@@ -245,7 +261,8 @@ namespace HAProxy.StreamProcessingOffload.Agent
                         this.LogFunc("Closing connection.");
                     }
 
-                    stream.Close();
+                    outputStream.Close();
+                    inputStream.Close();
                     break;
                 }
             }
