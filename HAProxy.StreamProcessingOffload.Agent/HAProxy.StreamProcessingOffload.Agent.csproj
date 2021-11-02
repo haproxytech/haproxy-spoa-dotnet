@@ -14,4 +14,8 @@
     <RepositoryUrl>https://github.com/haproxytech/haproxy-spoa-dotnet</RepositoryUrl>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="System.Threading.Tasks.Extensions" Version="4.5.4" />
+  </ItemGroup>
+
 </Project>

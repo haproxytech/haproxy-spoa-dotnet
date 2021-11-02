@@ -10,6 +10,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using HAProxy.StreamProcessingOffload.Agent.Frames;
 using HAProxy.StreamProcessingOffload.Agent.Payloads;
 
@@ -52,6 +53,24 @@ namespace HAProxy.StreamProcessingOffload.Agent
         /// <param name="stream">The stream to receive and send frames on</param>
         /// <param name="notifyHandler">Function to invoke when a NOTIFY frame is received</param>
         public void HandleStream(Stream stream, Func<NotifyFrame, IList<SpoeAction>> notifyHandler)
+        {
+            Func<NotifyFrame, ValueTask<IList<SpoeAction>>> wrappedHandler = frame =>
+                new ValueTask<IList<SpoeAction>>(notifyHandler(frame));
+
+            HandleSyncTask(HandleStreamAsyncCore(stream, wrappedHandler, false));
+        }
+
+        /// <summary>
+        /// Handles receiving and sending frames on the given stream.
+        /// </summary>
+        /// <param name="stream">The stream to receive and send frames on</param>
+        /// <param name="notifyHandler">Function to invoke when a NOTIFY frame is received</param>
+        public ValueTask HandleStreamAsync(Stream stream, Func<NotifyFrame, ValueTask<IList<SpoeAction>>> notifyHandler)
+        {
+            return HandleStreamAsyncCore(stream, notifyHandler, true);
+        }
+
+        private async ValueTask HandleStreamAsyncCore(Stream stream, Func<NotifyFrame, ValueTask<IList<SpoeAction>>> notifyHandler, bool useAsync)
         {
             if (stream == null)
             {
@@ -114,7 +133,9 @@ namespace HAProxy.StreamProcessingOffload.Agent
                         case FrameType.Notify:
                             if (frame.Metadata.Flags.Fin)
                             {
-                                var actions = notifyHandler((NotifyFrame)frame);
+                                var actions = useAsync
+                                    ? await notifyHandler((NotifyFrame)frame).ConfigureAwait(false)
+                                    : HandleSyncTask(notifyHandler((NotifyFrame)frame));
 
                                 var ackFrame = new AckFrame(
                                     frame.Metadata.StreamId.Value,
@@ -169,7 +190,9 @@ namespace HAProxy.StreamProcessingOffload.Agent
                                         this.LogFunc(newNotifyFrame.ToString());
                                     }
 
-                                    var actions = notifyHandler((NotifyFrame)newNotifyFrame);
+                                    var actions = useAsync
+                                        ? await notifyHandler((NotifyFrame)newNotifyFrame).ConfigureAwait(false)
+                                        : HandleSyncTask(notifyHandler((NotifyFrame)newNotifyFrame));
 
                                     var ackFrame = new AckFrame(
                                         frame.Metadata.StreamId.Value,
@@ -412,6 +435,50 @@ namespace HAProxy.StreamProcessingOffload.Agent
             {
                 throw new ApplicationException("Unable to parse frame type. Got value: " + frameTypeByte);
             }
+        }
+
+        /// <summary>
+        /// Ensures, that a synchronous <see cref="ValueTask"/> is completed.
+        /// </summary>
+        /// <param name="task">The task to handle</param>
+        /// <exception cref="InvalidOperationException">If the task is not a synchronous task</exception>
+        /// <remarks>
+        /// See the following articles on this topic:
+        ///   - https://devblogs.microsoft.com/dotnet/understanding-the-whys-whats-and-whens-of-valuetask/
+        ///   - https://docs.microsoft.com/en-us/archive/msdn-magazine/2015/july/async-programming-brownfield-async-development#the-flag-argument-hack
+        ///   - https://www.thereformedprogrammer.net/using-valuetask-to-create-methods-that-can-work-as-sync-or-async/
+        /// </remarks>
+        private static void HandleSyncTask(ValueTask task)
+        {
+            if (!task.IsCompleted)
+            {
+                throw new InvalidOperationException("Synchronous ValueTask is not completed");
+            }
+
+            task.GetAwaiter().GetResult();
+        }
+
+        /// <summary>
+        /// Ensures, that a synchronous <see cref="ValueTask{T}"/> is completed and unwraps its result.
+        /// </summary>
+        /// <param name="task">The task to handle</param>
+        /// <typeparam name="T">The type of the task's result</typeparam>
+        /// <returns>The task's result</returns>
+        /// <exception cref="InvalidOperationException">If the task is not a synchronous task</exception>
+        /// <remarks>
+        /// See the following articles on this topic:
+        ///   - https://devblogs.microsoft.com/dotnet/understanding-the-whys-whats-and-whens-of-valuetask/
+        ///   - https://docs.microsoft.com/en-us/archive/msdn-magazine/2015/july/async-programming-brownfield-async-development#the-flag-argument-hack
+        ///   - https://www.thereformedprogrammer.net/using-valuetask-to-create-methods-that-can-work-as-sync-or-async/
+        /// </remarks>
+        private static T HandleSyncTask<T>(ValueTask<T> task)
+        {
+            if (!task.IsCompleted)
+            {
+                throw new InvalidOperationException("Synchronous ValueTask is not completed");
+            }
+
+            return task.GetAwaiter().GetResult();
         }
     }
 }
