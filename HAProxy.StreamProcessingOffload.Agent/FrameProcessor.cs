@@ -96,7 +96,7 @@ namespace HAProxy.StreamProcessingOffload.Agent
 
                 try
                 {
-                    byte[] frameBytes = GetBytesForNextFrame(stream);
+                    byte[] frameBytes = useAsync ? await GetBytesForNextFrameAsync(stream).ConfigureAwait(false) : GetBytesForNextFrame(stream);
                     frame = ParseFrame(frameBytes);
 
                     if (this.EnableLogging)
@@ -244,7 +244,14 @@ namespace HAProxy.StreamProcessingOffload.Agent
 
                     while (responseFrames.TryDequeue(out dequeuedFrame))
                     {
-                        stream.Write(dequeuedFrame.Bytes, 0, dequeuedFrame.Bytes.Length);
+                        if (useAsync)
+                        {
+                            await stream.WriteAsync(dequeuedFrame.Bytes, 0, dequeuedFrame.Bytes.Length).ConfigureAwait(false);
+                        }
+                        else
+                        {
+                            stream.Write(dequeuedFrame.Bytes, 0, dequeuedFrame.Bytes.Length);
+                        }
                     }
                 }
 
@@ -257,7 +264,15 @@ namespace HAProxy.StreamProcessingOffload.Agent
                         this.LogFunc(disconnectFrame.ToString());
                     }
 
-                    stream.Write(disconnectFrame.Bytes, 0, disconnectFrame.Bytes.Length);
+                    if (useAsync)
+                    {
+                        await stream.WriteAsync(disconnectFrame.Bytes, 0, disconnectFrame.Bytes.Length).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        stream.Write(disconnectFrame.Bytes, 0, disconnectFrame.Bytes.Length);
+                    }
+
                     closeConnection = true;
                 }
 
@@ -371,6 +386,20 @@ namespace HAProxy.StreamProcessingOffload.Agent
             return buffer;
         }
 
+        private async ValueTask<byte[]> GetBytesForNextFrameAsync(Stream stream)
+        {
+            int length = await ParseFrameLengthAsync(stream).ConfigureAwait(false);
+
+            if (length == 0)
+            {
+                return new byte[0];
+            }
+
+            byte[] buffer = new byte[length];
+            await stream.ReadAsync(buffer, 0, length).ConfigureAwait(false);
+            return buffer;
+        }
+
         private Frame NewFrameFromType(FrameType frameType, Status status = Status.Normal, string message = null)
         {
             Frame frame;
@@ -401,6 +430,19 @@ namespace HAProxy.StreamProcessingOffload.Agent
             var buffer = new byte[4];
             int bytesRead = stream.Read(buffer, 0, 4);
 
+            return ParseRawFrameLength(bytesRead, buffer);
+        }
+
+        private async ValueTask<int> ParseFrameLengthAsync(Stream stream)
+        {
+            var buffer = new byte[4];
+            int bytesRead = await stream.ReadAsync(buffer, 0, 4).ConfigureAwait(false);
+
+            return ParseRawFrameLength(bytesRead, buffer);
+        }
+
+        private int ParseRawFrameLength(int bytesRead, byte[] buffer)
+        {
             if (bytesRead == 0)
             {
                 // 'Read' returns 0 when there is no more data in
