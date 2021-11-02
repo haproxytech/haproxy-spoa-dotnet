@@ -289,16 +289,43 @@ namespace HAProxy.StreamProcessingOffload.Agent
             }
         }
 
+        /// <summary>
+        /// Cancels processing on the given stream.
+        /// </summary>
+        /// <param name="stream">The stream to cancel</param>
         public void CancelStream(Stream stream)
         {
-            try{
+            HandleSyncTask(CancelStreamAsyncCore(stream, false));
+        }
+
+        /// <summary>
+        /// Cancels processing on the given stream.
+        /// </summary>
+        /// <param name="stream">The stream to cancel</param>
+        public ValueTask CancelStreamAsync(Stream stream)
+        {
+            return CancelStreamAsyncCore(stream, true);
+        }
+
+        private async ValueTask CancelStreamAsyncCore(Stream stream, bool useAsync)
+        {
+            try
+            {
                 if (this.EnableLogging)
                 {
                     this.LogFunc("Cancellation has been requested");
                 }
-                
+
                 Frame disconnectFrame = Disconnect(Status.Normal, "Stream was cancelled");
-                stream.Write(disconnectFrame.Bytes, 0, disconnectFrame.Bytes.Length);
+
+                if (useAsync)
+                {
+                    await stream.WriteAsync(disconnectFrame.Bytes, 0, disconnectFrame.Bytes.Length).ConfigureAwait(false);
+                }
+                else
+                {
+                    stream.Write(disconnectFrame.Bytes, 0, disconnectFrame.Bytes.Length);
+                }
 
                 if (this.EnableLogging)
                 {

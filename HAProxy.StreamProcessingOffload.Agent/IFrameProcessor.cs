@@ -50,5 +50,11 @@ namespace HAProxy.StreamProcessingOffload.Agent
         /// </summary>
         /// <param name="stream">The stream to cancel</param>
         void CancelStream(Stream stream);
+
+        /// <summary>
+        /// Cancels processing on the given stream.
+        /// </summary>
+        /// <param name="stream">The stream to cancel</param>
+        ValueTask CancelStreamAsync(Stream stream);
     }
 }
