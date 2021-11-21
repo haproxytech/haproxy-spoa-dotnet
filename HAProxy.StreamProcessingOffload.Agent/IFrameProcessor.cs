@@ -8,6 +8,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading.Tasks;
 using HAProxy.StreamProcessingOffload.Agent.Frames;
 
 namespace HAProxy.StreamProcessingOffload.Agent
@@ -38,9 +39,22 @@ namespace HAProxy.StreamProcessingOffload.Agent
         void HandleStream(Stream stream, Func<NotifyFrame, IList<SpoeAction>> notifyHandler);
 
         /// <summary>
+        /// Handles receiving and sending frames on the given stream.
+        /// </summary>
+        /// <param name="stream">The stream to receive and send frames on</param>
+        /// <param name="notifyHandler">Function to invoke when a NOTIFY frame is received</param>
+        ValueTask HandleStreamAsync(Stream stream, Func<NotifyFrame, ValueTask<IList<SpoeAction>>> notifyHandler);
+
+        /// <summary>
         /// Cancels processing on the given stream.
         /// </summary>
         /// <param name="stream">The stream to cancel</param>
         void CancelStream(Stream stream);
+
+        /// <summary>
+        /// Cancels processing on the given stream.
+        /// </summary>
+        /// <param name="stream">The stream to cancel</param>
+        ValueTask CancelStreamAsync(Stream stream);
     }
 }
