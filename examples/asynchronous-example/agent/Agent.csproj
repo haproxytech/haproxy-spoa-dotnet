@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <ProjectReference Include="..\..\HAProxy.StreamProcessingOffload.Agent\HAProxy.StreamProcessingOffload.Agent.csproj" />
+    <ProjectReference Include="..\..\..\HAProxy.StreamProcessingOffload.Agent\HAProxy.StreamProcessingOffload.Agent.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

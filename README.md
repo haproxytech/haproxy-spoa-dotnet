@@ -38,7 +38,7 @@ $ dotnet new console
 ```
 $ dotnet add package HAProxy.StreamProcessingOffload.Agent --version 1.0.3
 ```
-5. Edit **Program.cs** to start a service listening on an IP and port. Create an instance of `FrameProcessor` and call `HandleStream` to process SPOP messages received on new network connections. This method accepts a `NetworkStream` and a callback function that takes a `NotifyFrame` and returns `List<SpoeAction>`.
+5. Edit **Program.cs** to start a service listening on an IP and port. Create an instance of `FrameProcessor` and call `HandleStreamAsync` to process SPOP messages received on new network connections. This method accepts a `NetworkStream` and a callback function that takes a `NotifyFrame` and returns `List<SpoeAction>`.
 
 ## Example 
 
@@ -50,18 +50,19 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Threading;
 using System.Threading.Tasks;
 using HAProxy.StreamProcessingOffload.Agent;
 using HAProxy.StreamProcessingOffload.Agent.Actions;
 using HAProxy.StreamProcessingOffload.Agent.Payloads;
 
-namespace spoa_dotnet_example
+namespace Agent
 {
     class Program
     {
         static void Main(string[] args)
         {
-            IPAddress address = IPAddress.Parse("127.0.0.1");
+            IPAddress address = IPAddress.Parse("0.0.0.0");
             int port = 12345;
             var listener = new TcpListener(address, port);
             var frameProcessor = new FrameProcessor()
@@ -77,10 +78,17 @@ namespace spoa_dotnet_example
             {
                 TcpClient client = listener.AcceptTcpClient();
 
-                Task.Run(() =>
+                Task.Run(async () =>
                 {
                     NetworkStream stream = client.GetStream();
-                    frameProcessor.HandleStream(stream, (notifyFrame) =>
+
+                    // Cancel stream when process terminates
+                    System.AppDomain.CurrentDomain.ProcessExit += async (sender, e) =>
+                    {
+                        await frameProcessor.CancelStreamAsync(stream);
+                    };
+
+                    await frameProcessor.HandleStreamAsync(stream, async (notifyFrame) =>
                     {
                         // NOTIFY frames contain HAProxy messages to the agent.
                         // The agent can send back "actions" to HAProxy via ACK frames.
@@ -89,26 +97,30 @@ namespace spoa_dotnet_example
 
                         if (messages.Any(msg => msg.Name == "my-message-name"))
                         {
-                           var myMessage = messages.First(msg => msg.Name == "my-message-name");
+                            var myMessage = messages.First(msg => msg.Name == "my-message-name");
 
-                           // Each message may contain a collection of arguments, which hold the data.
-                           TypedData myArg = myMessage.Args.First(arg => arg.Key == "ip").Value; 
+                            // Each message may contain a collection of arguments, which hold the data.
+                            TypedData myArg = myMessage.Args.First(arg => arg.Key == "ip").Value; 
 
-                           int ip_score = 10;
+                            // simulate a non-blocking API call that gets the IP score
+                            // and takes 1 second
+                            await Task.Delay(1000);
 
-                           if ((string)myArg.Value == "192.168.50.1")
-                           {
-                               ip_score = 20;
-                           }
+                            int ip_score = 10;
 
-                           // You can send actions back to HAProxy, such as setting a variable.
-                           SpoeAction setVar = 
-                              new SetVariableAction(
-                                 VariableScope.Session, 
-                                 "ip_score", 
-                                 new TypedData(DataType.Int32, ip_score));
+                            if ((string)myArg.Value == "192.168.50.1")
+                            {
+                                ip_score = 20;
+                            }
 
-                           responseActions.Add(setVar);
+                            // You can send actions back to HAProxy, such as setting a variable.
+                            SpoeAction setVar = 
+                                new SetVariableAction(
+                                    VariableScope.Session, 
+                                    "ip_score", 
+                                    new TypedData(DataType.Int32, ip_score));
+
+                            responseActions.Add(setVar);
                         }
 
                         return responseActions;
@@ -122,7 +134,7 @@ namespace spoa_dotnet_example
 
 ## How it Works
 
-All communication is handled by the `FrameProcessor` class. Its `HandleStream` method takes a `NetworkStream` object and a lambda function as parameters. The lambda function is called when a NOTIFY frame is received. From there, you can return a list of `SpoeAction` objects, which tell HAProxy to perform action(s).
+All communication is handled by the `FrameProcessor` class. Its `HandleStreamAsync` method takes a `NetworkStream` object and a lambda function as parameters. The lambda function is called when a NOTIFY frame is received. From there, you can return a list of `SpoeAction` objects, which tell HAProxy to perform action(s).
 
 Actions:
 

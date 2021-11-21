@@ -7,8 +7,8 @@ services:
 
     agent:
       build:
-        context: ..
-        dockerfile: examples/Dockerfile
+        context: ../../
+        dockerfile: ./examples/synchronous-example/agent/Dockerfile
       image: haproxy-dotnet-spoa:debug
       container_name: agent
 

@@ -31,17 +31,17 @@ namespace Agent
             {
                 TcpClient client = listener.AcceptTcpClient();
 
-                Task.Run(() =>
+                Task.Run(async () =>
                 {
                     NetworkStream stream = client.GetStream();
 
                     // Cancel stream when process terminates
-                    System.AppDomain.CurrentDomain.ProcessExit += (sender, e) =>
+                    System.AppDomain.CurrentDomain.ProcessExit += async (sender, e) =>
                     {
-                        frameProcessor.CancelStream(stream);
+                        await frameProcessor.CancelStreamAsync(stream);
                     };
 
-                    frameProcessor.HandleStream(stream, (notifyFrame) =>
+                    await frameProcessor.HandleStreamAsync(stream, async (notifyFrame) =>
                     {
                         // NOTIFY frames contain HAProxy messages to the agent.
                         // The agent can send back "actions" to HAProxy via ACK frames.
@@ -54,6 +54,10 @@ namespace Agent
 
                             // Each message may contain a collection of arguments, which hold the data.
                             TypedData myArg = myMessage.Args.First(arg => arg.Key == "ip").Value; 
+
+                            // simulate a non-blocking API call that gets the IP score
+                            // and takes 1 second
+                            await Task.Delay(1000);
 
                             int ip_score = 10;
 
