@@ -29,10 +29,10 @@ Studio Code's *launch.json* file:
                 "quoteArgs": false
             },
             "sourceFileMap": {
-                "/source/examples/asynchronous-example/agent": "${workspaceRoot}/examples/asynchronous-example/agent",
+                "/source/examples/synchronous-example/agent": "${workspaceRoot}/examples/synchronous-example/agent",
                 "/source/HAProxy.StreamProcessingOffload.Agent": "${workspaceRoot}/HAProxy.StreamProcessingOffload.Agent"
+            }
         }
-        
     ]
 }
 ```

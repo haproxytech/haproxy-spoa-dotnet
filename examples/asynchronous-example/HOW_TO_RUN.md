@@ -31,8 +31,8 @@ Studio Code's *launch.json* file:
             "sourceFileMap": {
                 "/source/examples/asynchronous-example/agent": "${workspaceRoot}/examples/asynchronous-example/agent",
                 "/source/HAProxy.StreamProcessingOffload.Agent": "${workspaceRoot}/HAProxy.StreamProcessingOffload.Agent"
+            }
         }
-        
     ]
 }
 ```
