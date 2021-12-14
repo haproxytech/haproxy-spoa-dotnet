@@ -1,4 +1,4 @@
-﻿//-----------------------------------------------------------------------
+//-----------------------------------------------------------------------
 // <copyright file="FrameProcessor.cs" company="HAProxy Technologies">
 //     The contents of this file are Copyright (c) 2019. HAProxy Technologies. 
 //     All rights reserved. This file is subject to the terms and conditions
@@ -57,7 +57,21 @@ namespace HAProxy.StreamProcessingOffload.Agent
             Func<NotifyFrame, ValueTask<IList<SpoeAction>>> wrappedHandler = frame =>
                 new ValueTask<IList<SpoeAction>>(notifyHandler(frame));
 
-            HandleSyncTask(HandleStreamAsyncCore(stream, wrappedHandler, false));
+            HandleSyncTask(HandleStreamAsyncCore(stream, stream, wrappedHandler, false));
+        }
+
+        /// <summary>
+        /// Handles receiving and sending frames on the given stream.
+        /// </summary>
+        /// <param name="inputStream">The stream to receive frames on</param>
+        /// <param name="outputstream">The stream to send frames on</param>
+        /// <param name="notifyHandler">Function to invoke when a NOTIFY frame is received</param>
+        public void HandleStream(Stream inputStream, Stream outputstream, Func<NotifyFrame, IList<SpoeAction>> notifyHandler)
+        {
+            Func<NotifyFrame, ValueTask<IList<SpoeAction>>> wrappedHandler = frame =>
+                new ValueTask<IList<SpoeAction>>(notifyHandler(frame));
+
+            HandleSyncTask(HandleStreamAsyncCore(inputStream, outputstream, wrappedHandler, false));
         }
 
         /// <summary>
@@ -67,14 +81,30 @@ namespace HAProxy.StreamProcessingOffload.Agent
         /// <param name="notifyHandler">Function to invoke when a NOTIFY frame is received</param>
         public ValueTask HandleStreamAsync(Stream stream, Func<NotifyFrame, ValueTask<IList<SpoeAction>>> notifyHandler)
         {
-            return HandleStreamAsyncCore(stream, notifyHandler, true);
+            return HandleStreamAsyncCore(stream, stream, notifyHandler, true);
         }
 
-        private async ValueTask HandleStreamAsyncCore(Stream stream, Func<NotifyFrame, ValueTask<IList<SpoeAction>>> notifyHandler, bool useAsync)
+        /// <summary>
+        /// Handles receiving and sending frames on the given stream.
+        /// </summary>
+        /// <param name="inputStream">The stream to receive frames on</param>
+        /// <param name="outputstream">The stream to send frames on</param>
+        /// <param name="notifyHandler">Function to invoke when a NOTIFY frame is received</param>
+        public ValueTask HandleStreamAsync(Stream inputStream, Stream outputstream, Func<NotifyFrame, ValueTask<IList<SpoeAction>>> notifyHandler)
         {
-            if (stream == null)
+            return HandleStreamAsyncCore(inputStream, outputstream, notifyHandler, true);
+        }
+
+        private async ValueTask HandleStreamAsyncCore(Stream inputStream, Stream outputStream, Func<NotifyFrame, ValueTask<IList<SpoeAction>>> notifyHandler, bool useAsync)
+        {
+            if (inputStream == null)
             {
-                throw new ApplicationException("Start method requires 'stream' parameter.");
+                throw new ApplicationException("Start method requires 'inputStream' parameter.");
+            }
+
+            if (outputStream == null)
+            {
+                throw new ApplicationException("Start method requires 'outputStream' parameter.");
             }
 
             if (notifyHandler == null)
@@ -96,7 +126,7 @@ namespace HAProxy.StreamProcessingOffload.Agent
 
                 try
                 {
-                    byte[] frameBytes = useAsync ? await GetBytesForNextFrameAsync(stream).ConfigureAwait(false) : GetBytesForNextFrame(stream);
+                    byte[] frameBytes = useAsync ? await GetBytesForNextFrameAsync(inputStream).ConfigureAwait(false) : GetBytesForNextFrame(inputStream);
                     frame = ParseFrame(frameBytes);
 
                     if (this.EnableLogging)
@@ -246,11 +276,11 @@ namespace HAProxy.StreamProcessingOffload.Agent
                     {
                         if (useAsync)
                         {
-                            await stream.WriteAsync(dequeuedFrame.Bytes, 0, dequeuedFrame.Bytes.Length).ConfigureAwait(false);
+                            await outputStream.WriteAsync(dequeuedFrame.Bytes, 0, dequeuedFrame.Bytes.Length).ConfigureAwait(false);
                         }
                         else
                         {
-                            stream.Write(dequeuedFrame.Bytes, 0, dequeuedFrame.Bytes.Length);
+                            outputStream.Write(dequeuedFrame.Bytes, 0, dequeuedFrame.Bytes.Length);
                         }
                     }
                 }
@@ -266,11 +296,11 @@ namespace HAProxy.StreamProcessingOffload.Agent
 
                     if (useAsync)
                     {
-                        await stream.WriteAsync(disconnectFrame.Bytes, 0, disconnectFrame.Bytes.Length).ConfigureAwait(false);
+                        await outputStream.WriteAsync(disconnectFrame.Bytes, 0, disconnectFrame.Bytes.Length).ConfigureAwait(false);
                     }
                     else
                     {
-                        stream.Write(disconnectFrame.Bytes, 0, disconnectFrame.Bytes.Length);
+                        outputStream.Write(disconnectFrame.Bytes, 0, disconnectFrame.Bytes.Length);
                     }
 
                     closeConnection = true;
@@ -283,7 +313,8 @@ namespace HAProxy.StreamProcessingOffload.Agent
                         this.LogFunc("Closing connection.");
                     }
 
-                    stream.Close();
+                    inputStream.Close();
+                    outputStream.Close();
                     break;
                 }
             }
