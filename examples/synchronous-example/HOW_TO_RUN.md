@@ -1,11 +1,19 @@
 # Examples
 
+This project is a .NET Core console app, which was created with the command:
+
+```
+dotnet new console
+```
+
 Build an run the Docker Compose file:
 
 ```
 docker-compose build
 docker-compose up -d
 ```
+
+View the web app at http://localhost:8000.
 
 ## Debug with VS Code
 
