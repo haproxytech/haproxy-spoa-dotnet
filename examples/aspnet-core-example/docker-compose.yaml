@@ -1,0 +1,25 @@
+version: "3"
+services:
+
+    web:
+      image: jmalloc/echo-server
+      container_name: web
+
+    agent:
+      build:
+        context: ../..
+        dockerfile: examples/aspnet-core-example/agent/Dockerfile
+      image: haproxy-aspnet-spoa:debug
+      container_name: agent
+
+    haproxy:
+      image: haproxytech/haproxy-alpine:2.4
+      ports:
+      - "8000:80"
+      - "5000:5000"
+      container_name: haproxy
+      volumes:
+      - "./haproxy/:/etc/haproxy"
+      depends_on:
+        - web
+        - agent
